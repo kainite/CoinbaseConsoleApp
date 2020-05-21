@@ -11,7 +11,7 @@ namespace ConsoleApp_Coinbase
 {
     class Email
     {
-        public static void SendEmail(string mailMessage)
+        public static void SendEmail(string mailMessage, string mailSubject)
         {
             string eMailAdress = ConfigurationManager.AppSettings["emailAdress"];
             try
@@ -20,7 +20,7 @@ namespace ConsoleApp_Coinbase
                 SmtpClient smtp = new SmtpClient();
                 message.From = new MailAddress("CoinbaseAlertConsole@gmail.com");
                 message.To.Add(new MailAddress(eMailAdress));
-                message.Subject = "Coinbase Alert";
+                message.Subject = "Coinbase Alert" + mailSubject;
                 message.IsBodyHtml = true; //to make message body as html  
                 message.Body = mailMessage;
                 smtp.Port = 587;

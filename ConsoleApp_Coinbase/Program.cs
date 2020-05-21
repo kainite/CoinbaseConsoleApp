@@ -28,7 +28,9 @@ namespace Examples
             // Inicial vars Set a variable to the Documents path.
             string version = ConfigurationManager.AppSettings["version"]; 
             string pathgetprice = ConfigurationManager.AppSettings["pathgetprice"]; 
-            string pathbuysell = ConfigurationManager.AppSettings["pathbuysell"];  
+            string pathbuysell = ConfigurationManager.AppSettings["pathbuysell"];
+            string tradeBTC = ConfigurationManager.AppSettings["tradeBTC"];
+            string tradeETH = ConfigurationManager.AppSettings["tradeETH"];
             string ordertype = "";
             decimal size = 0;
             decimal limitPrice = 0m;
@@ -70,7 +72,7 @@ namespace Examples
                 marketPrice = GetMarkets(market, pathgetprice);
 
                 //---------      GET ALL ORDERS
-                Console.ForegroundColor = ConsoleColor.Blue;
+                Console.ForegroundColor = ConsoleColor.Cyan;
                 //BTC
                 var ordersBTC = await client.Orders.GetAllOrdersAsync("open", "BTC-EUR");
                 GetOrders(percentageBetOffset, marketPrice, ref checkBuyBTC, ref checkSellBTC, ordersBTC, ref emailOffSet);
@@ -87,7 +89,6 @@ namespace Examples
 
                 //Get accounts (portfolio)
                 Console.ForegroundColor = ConsoleColor.Yellow;
-
                 var accounts = await client.Accounts.GetAllAccountsAsync();
                 foreach (var account in accounts)
                 {
@@ -107,9 +108,9 @@ namespace Examples
                     errorbuysell = false;
                     //-------------------------   BUY
                     //check if there`s open orders
-                    if (accountAvailable[e] > minimumAccountAvailable && accountCoin[e] == "EUR" && checkBuyBTC == true || checkBuyETH == true) //All orders goes in btc
+                    if (accountAvailable[e] > minimumAccountAvailable && accountCoin[e] == "EUR" && checkBuyBTC == true ||
+                        accountAvailable[e] > minimumAccountAvailable && accountCoin[e] == "EUR" && checkBuyETH == true) //All orders goes in btc
                     {
-
                         //BUY logic ETH
                         ordertype = "Buy";
                         if (accountAvailable[e] <= buyLimiteMaxMin) { percentageBet = 1; }
@@ -121,9 +122,10 @@ namespace Examples
                         //  place order limite & error handdling 
                         try
                         {
-                            if (placebuy == "yes") { 
-                            var order1 = await client.Orders.PlaceLimitOrderAsync(
-                            OrderSide.Buy, "ETH-EUR", size: sizeround, limitPrice: limitPriceRound, timeInForce: TimeInForce.GoodTillCanceled);
+                            if (placebuy == "yes" && tradeBTC == "yes" || placebuy == "yes" && tradeETH == "yes")
+                            { 
+                                var order1 = await client.Orders.PlaceLimitOrderAsync(
+                                OrderSide.Buy, "ETH-EUR", size: sizeround, limitPrice: limitPriceRound, timeInForce: TimeInForce.GoodTillCanceled);
                             }
                         }
                         catch (Exception ex)
@@ -141,16 +143,15 @@ namespace Examples
                                 string message = "ETH-EUR" + "," + marketPrice + "," + ordertype + "," + size + "," + limitPrice.ToString();
                                 Console.WriteLine(message, Console.ForegroundColor);
                                 file.WriteLine(message);
-                                Email.SendEmail(message);
+                                Email.SendEmail(message, "BUY");
 
                             }
-
                         }
-
                     }
 
                     //-------------------------   Sell
-                    if (accountAvailable[e] > 0 && accountCoin[e] == "BTC" && checkSellBTC == true || accountAvailable[e] > 0 && accountCoin[e] == "ETH" && checkSellETH == true)
+                    if (accountAvailable[e] > 0 && accountCoin[e] == "BTC" && checkSellBTC == true || 
+                        accountAvailable[e] > 0 && accountCoin[e] == "ETH" && checkSellETH == true)
                     {
                         //SELL logic
                         ordertype = "Sell";
@@ -162,7 +163,7 @@ namespace Examples
                         //  place order limite & error handdling 
                         try
                         {
-                            if (placesell == "yes")
+                            if (placesell == "yes" && tradeBTC == "yes" || placesell == "yes" && tradeETH == "yes")
                             {
                                 var order1 = await client.Orders.PlaceLimitOrderAsync(
                                 OrderSide.Sell, accountCoin[e] + "-EUR", size: sizeround, limitPrice: limitPriceRound, timeInForce: TimeInForce.GoodTillCanceled);
@@ -183,7 +184,7 @@ namespace Examples
                                 string message = accountCoin[e] + "-EUR" + "," + marketPrice + "," + ordertype + "," + size + "," + limitPrice.ToString();
                                 Console.WriteLine(message, Console.ForegroundColor);
                                 file.WriteLine(message);
-                                Email.SendEmail(message);
+                                Email.SendEmail(message, "SELL");
                             }
 
                         }
@@ -290,16 +291,16 @@ namespace Examples
                 if (percentageOffsetRound <= percentageBetOffset && emailOffset == false)
                 {
                     Console.WriteLine(orderProductId + " Price Offset alert LOWER than existing order in : " + percentageOffsetRound + "%", Console.ForegroundColor);
-                    Email.SendEmail(orderProductId + " Price Offset alert LOWER than existing order in : " + percentageOffsetRound + "%");
+                    Email.SendEmail(orderProductId + " Price Offset alert LOWER than existing order in : " + percentageOffsetRound + "%", "LOW Price Offset");
                     emailOffset = true;
                 }
                 if (percentageOffsetRound >= percentageBetOffset && emailOffset == false)
                 {
                     Console.WriteLine(orderProductId + " Price Offset alert HIGHER than existing order in : " + percentageOffsetRound + "%", Console.ForegroundColor);
-                    Email.SendEmail(orderProductId + " Price Offset alert HIGHER than existing order in : " + percentageOffsetRound + "%");
+                    Email.SendEmail(orderProductId + " Price Offset alert HIGHER than existing order in : " + percentageOffsetRound + "%", "HIGH Price Offset");
                     emailOffset = true;
                 }
-                Console.ForegroundColor = ConsoleColor.Blue;
+                Console.ForegroundColor = ConsoleColor.Cyan;
 
             }
         }
