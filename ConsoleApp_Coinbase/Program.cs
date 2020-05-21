@@ -20,42 +20,32 @@ namespace Examples
         static async Task Main(string[] args)
         {
             #region Authentication
-            var clientSandbox = new CoinbaseProClient(new Config
-            {
-                ApiKey = "d9008cc93bae52d705347879543f7a2c",
-                Secret = "Fq1KhUlQfsuHBoHrKwmFvh7XELUJpIwUGoSEaz3CliBBwIl0800229gBOHnGP2luTTLNe3ySyEIRtCn+DlVHLQ==",
-                Passphrase = "9ws6jpis4fg",
-                ApiUrl = "https://api-public.sandbox.pro.coinbase.com"
-            });
-
-            var clientPro = new CoinbaseProClient(new Config
-            {
-                ApiKey = "fd11e4904d42ceac51d0ae06493ee522",
-                Secret = "c7cjJY6Nvyr+7JLyhfuMQ59wgzCHs54oMLlwlRKJF/62Nq15xOXytJRmDgXsEBsWcUU/qFOfLCAz/7fQerbx/w==",
-                Passphrase = "2793xxbjc7p",
-            });
-             #endregion
+            CoinbaseProClient clientSandbox, clientPro;
+            GetAuthentication(out clientSandbox, out clientPro);
+            #endregion
 
             #region INICIAL VARIABLES
             // Inicial vars Set a variable to the Documents path.
-            string version = ConfigurationManager.AppSettings["version"];  //@"D:\\GetPrice.csv";
-            string pathgetprice = ConfigurationManager.AppSettings["pathgetprice"];  //@"D:\\GetPrice.csv";
-            string pathbuysell = ConfigurationManager.AppSettings["pathbuysell"];  //@"D:\\GetPrice.csv";
+            string version = ConfigurationManager.AppSettings["version"]; 
+            string pathgetprice = ConfigurationManager.AppSettings["pathgetprice"]; 
+            string pathbuysell = ConfigurationManager.AppSettings["pathbuysell"];  
             string ordertype = "";
             decimal size = 0;
             decimal limitPrice = 0m;
-            decimal percentageBuySell = Convert.ToDecimal(ConfigurationManager.AppSettings["percentageBuySell"]);  //0.025m;//25% - margin de lucro sem fees 5%
-            decimal percentageBet = Convert.ToDecimal(ConfigurationManager.AppSettings["percentageBet"]);  //0.5m; //percentagem de aposta do valor disponivel 50% na compra
-            decimal buyLimiteMaxMin = Convert.ToDecimal(ConfigurationManager.AppSettings["buyLimiteMaxMin"]);  //500;
-            decimal minimumAccountAvailable = Convert.ToDecimal(ConfigurationManager.AppSettings["minimumAccountAvailable"]);  //50;
+            decimal percentageBuySell = Convert.ToDecimal(ConfigurationManager.AppSettings["percentageBuySell"]);  
+            decimal percentageBet = Convert.ToDecimal(ConfigurationManager.AppSettings["percentageBet"]); 
+            decimal buyLimiteMaxMin = Convert.ToDecimal(ConfigurationManager.AppSettings["buyLimiteMaxMin"]);  
+            decimal minimumAccountAvailable = Convert.ToDecimal(ConfigurationManager.AppSettings["minimumAccountAvailable"]);  
             decimal percentageBetOffset = Convert.ToDecimal(ConfigurationManager.AppSettings["percentageBetOffset"]);
             List<decimal> accountAvailable = new List<decimal>();
             List<string> accountCoin = new List<string>();
+            string placebuy = ConfigurationManager.AppSettings["placebuy"];
+            string placesell = ConfigurationManager.AppSettings["placesell"];
             decimal marketPrice = 0;
             bool checkBuyBTC = true;
             bool checkSellBTC = true;
-            bool checkBuyETH = false;
-            bool checkSellETH = false; //tem que estar false porque sandbox nao tem ETH e tenho que mudar no fim do codigo tb.
+            bool checkBuyETH = true;
+            bool checkSellETH = true; //tem que estar false porque sandbox nao tem ETH e tenho que mudar no fim do codigo tb.
             bool errorbuysell = false;
             bool emailOffSet = false;
             var client = clientSandbox;
@@ -63,8 +53,9 @@ namespace Examples
             if (ConfigurationManager.AppSettings["Enviroment"] == "Sandbox")
             { client = clientSandbox; }
             else
-            { client = clientPro; }//Sandbox var client = clientPro; //Live
+            { client = clientPro; }
             #endregion
+
             Console.WriteLine("Lets Rock!! Code version:" + version);
             //for (int i = 0; i < 1000; i++)
             while (true)
@@ -83,9 +74,10 @@ namespace Examples
                 //BTC
                 var ordersBTC = await client.Orders.GetAllOrdersAsync("open", "BTC-EUR");
                 GetOrders(percentageBetOffset, marketPrice, ref checkBuyBTC, ref checkSellBTC, ordersBTC, ref emailOffSet);
+
                 //ETH
-                // var ordersETH = await client.Orders.GetAllOrdersAsync("open", "ETH-EUR");
-                //GetOrders(percentageBetOffset, marketPrice, ref checkBuyBTC, ref checkSellBTC, ordersETH, ref emailOffSet);
+                var ordersETH = await client.Orders.GetAllOrdersAsync("open", "ETH-EUR");
+                GetOrders(percentageBetOffset, marketPrice, ref checkBuyETH, ref checkSellETH, ordersETH, ref emailOffSet);
 
                 ////---------      GET ALL Fills
                 Console.ForegroundColor = ConsoleColor.Cyan;
@@ -102,8 +94,8 @@ namespace Examples
                     if (account.Currency == "EUR" || account.Currency == "BTC" || account.Currency == "ETH")
                     {
                         Console.WriteLine($"====================================", Console.ForegroundColor);
-                        Console.WriteLine($"fill Price: {account.Currency}", Console.ForegroundColor);
-                        Console.WriteLine($"fill Liquidity: {account.Available}", Console.ForegroundColor);
+                        Console.WriteLine($"Value Price: {account.Currency}", Console.ForegroundColor);
+                        Console.WriteLine($"Value Liquidity: {account.Available}", Console.ForegroundColor);
 
                         accountCoin.Add(account.Currency);
                         accountAvailable.Add(account.Available);
@@ -118,7 +110,7 @@ namespace Examples
                     if (accountAvailable[e] > minimumAccountAvailable && accountCoin[e] == "EUR" && checkBuyBTC == true || checkBuyETH == true) //All orders goes in btc
                     {
 
-                        //BUY logic
+                        //BUY logic ETH
                         ordertype = "Buy";
                         if (accountAvailable[e] <= buyLimiteMaxMin) { percentageBet = 1; }
                         limitPrice = marketPrice - (marketPrice * percentageBuySell);
@@ -129,8 +121,10 @@ namespace Examples
                         //  place order limite & error handdling 
                         try
                         {
+                            if (placebuy == "yes") { 
                             var order1 = await client.Orders.PlaceLimitOrderAsync(
-                            OrderSide.Buy, "BTC-EUR", size: sizeround, limitPrice: limitPriceRound, timeInForce: TimeInForce.GoodTillCanceled);
+                            OrderSide.Buy, "ETH-EUR", size: sizeround, limitPrice: limitPriceRound, timeInForce: TimeInForce.GoodTillCanceled);
+                            }
                         }
                         catch (Exception ex)
                         {
@@ -144,14 +138,10 @@ namespace Examples
                             if (errorbuysell == false)
                             {
                                 Console.ForegroundColor = ConsoleColor.Green;
-                                string message = "BTC-EUR" + "," + marketPrice + "," + ordertype + "," + size + "," + limitPrice.ToString();
+                                string message = "ETH-EUR" + "," + marketPrice + "," + ordertype + "," + size + "," + limitPrice.ToString();
                                 Console.WriteLine(message, Console.ForegroundColor);
                                 file.WriteLine(message);
                                 Email.SendEmail(message);
-
-                                //Console.ForegroundColor = ConsoleColor.Green;
-                                //Console.WriteLine("BTC-EUR" + "," + market.Price + "," + market.Ask + "," + market.Bid + "," + market.Time + "," + ordertype + "," + size + "," + limitPrice, Console.ForegroundColor);
-                                //file.WriteLine("BTC-EUR" + "," + market.Price + "," + market.Ask + "," + market.Bid + "," + market.Time + "," + ordertype + "," + size + "," + limitPrice);
 
                             }
 
@@ -160,7 +150,7 @@ namespace Examples
                     }
 
                     //-------------------------   Sell
-                    if (accountAvailable[e] > 0 && accountCoin[e] == "BTC" || accountAvailable[e] > 0 && accountCoin[e] == "ETH" && checkSellBTC == true || checkSellETH == true)
+                    if (accountAvailable[e] > 0 && accountCoin[e] == "BTC" && checkSellBTC == true || accountAvailable[e] > 0 && accountCoin[e] == "ETH" && checkSellETH == true)
                     {
                         //SELL logic
                         ordertype = "Sell";
@@ -172,8 +162,11 @@ namespace Examples
                         //  place order limite & error handdling 
                         try
                         {
-                            var order1 = await client.Orders.PlaceLimitOrderAsync(
-                            OrderSide.Sell, accountCoin[e] + "-EUR", size: sizeround, limitPrice: limitPriceRound, timeInForce: TimeInForce.GoodTillCanceled);
+                            if (placesell == "yes")
+                            {
+                                var order1 = await client.Orders.PlaceLimitOrderAsync(
+                                OrderSide.Sell, accountCoin[e] + "-EUR", size: sizeround, limitPrice: limitPriceRound, timeInForce: TimeInForce.GoodTillCanceled);
+                            }
                         }
                         catch (Exception ex)
                         {
@@ -187,7 +180,7 @@ namespace Examples
                             if (errorbuysell == false)
                             {
                                 Console.ForegroundColor = ConsoleColor.Green;
-                                string message = "BTC-EUR" + "," + marketPrice + "," + ordertype + "," + size + "," + limitPrice.ToString();
+                                string message = accountCoin[e] + "-EUR" + "," + marketPrice + "," + ordertype + "," + size + "," + limitPrice.ToString();
                                 Console.WriteLine(message, Console.ForegroundColor);
                                 file.WriteLine(message);
                                 Email.SendEmail(message);
@@ -196,6 +189,16 @@ namespace Examples
                         }
                     }
                 }
+
+                accountCoin.Clear();
+                accountAvailable.Clear();
+                checkBuyBTC = true;
+                checkSellBTC = true;
+                checkBuyETH = true;
+                checkSellETH = true;
+
+                Thread.Sleep(10000);
+
 
                 /////  --------------    paging
                 /////
@@ -208,21 +211,25 @@ namespace Examples
                 //   trades = await client.MarketData.GetTradesAsync("BTC-EUR", limit: 5, before: trades.Before);
                 //}
 
-                accountCoin.Clear();
-                accountAvailable.Clear();
-                checkBuyBTC = true;
-                checkSellBTC = true;
-                checkBuyETH = false;
-                checkSellETH = false;
-
-
-
-                Thread.Sleep(10000);
-
             }
+            //Console.ReadKey();
+        }
 
-            Console.ReadKey();
-
+        private static void GetAuthentication(out CoinbaseProClient clientSandbox, out CoinbaseProClient clientPro)
+        {
+            clientSandbox = new CoinbaseProClient(new Config
+            {
+                ApiKey = ConfigurationManager.AppSettings["ApiKey"],
+                Secret = ConfigurationManager.AppSettings["Secret"],
+                Passphrase = ConfigurationManager.AppSettings["Passphrase"],
+                ApiUrl = "https://api-public.sandbox.pro.coinbase.com"
+            });
+            clientPro = new CoinbaseProClient(new Config
+            {
+                ApiKey = ConfigurationManager.AppSettings["ApiKey"],
+                Secret = ConfigurationManager.AppSettings["Secret"],
+                Passphrase = ConfigurationManager.AppSettings["Passphrase"],
+            });
         }
 
         private static void GetProducts(List<Product> coins)
@@ -267,27 +274,29 @@ namespace Examples
                 Console.WriteLine($"Order Side: {order.Side}", Console.ForegroundColor);
                 Console.WriteLine($"Order Type: {order.Type}", Console.ForegroundColor);
 
+                string orderProductId = order.ProductId;
                 string ordersStatus = order.Status;
                 string ordersSide = order.Side.ToString();
-
-
+                
                 if (ordersSide == "Buy" && ordersStatus == "open") { checkBuyBTC = false; }
                 if (ordersSide == "Sell" && ordersStatus == "open") { checkSellBTC = false; }
 
                 //SEND MONITOR ALERT of offset values bigger than percentagebyofset
                 decimal percentageOffset = marketPrice / order.Price - 1;
                 decimal percentageOffsetRound = Decimal.Round(percentageOffset, 2);
+                if (percentageOffsetRound < 0) { percentageOffsetRound = percentageOffsetRound * -1; }
+
                 Console.ForegroundColor = ConsoleColor.Magenta;
-                if (percentageOffset <= percentageBetOffset && emailOffset == false)
+                if (percentageOffsetRound <= percentageBetOffset && emailOffset == false)
                 {
-                    Console.WriteLine($"Price Offset alert higher than existing order in : " + percentageOffsetRound + "%", Console.ForegroundColor);
-                    Email.SendEmail("Price Offset alert higher than existing order in : " + percentageOffsetRound + "%");
+                    Console.WriteLine(orderProductId + " Price Offset alert LOWER than existing order in : " + percentageOffsetRound + "%", Console.ForegroundColor);
+                    Email.SendEmail(orderProductId + " Price Offset alert LOWER than existing order in : " + percentageOffsetRound + "%");
                     emailOffset = true;
                 }
-                if (percentageOffset >= percentageBetOffset && emailOffset == false)
+                if (percentageOffsetRound >= percentageBetOffset && emailOffset == false)
                 {
-                    Console.WriteLine($"Price Offset alert higher than existing order in : " + percentageOffsetRound + "%", Console.ForegroundColor);
-                    Email.SendEmail("Price Offset alert higher than existing order in : " + percentageOffsetRound + "%");
+                    Console.WriteLine(orderProductId + " Price Offset alert HIGHER than existing order in : " + percentageOffsetRound + "%", Console.ForegroundColor);
+                    Email.SendEmail(orderProductId + " Price Offset alert HIGHER than existing order in : " + percentageOffsetRound + "%");
                     emailOffset = true;
                 }
                 Console.ForegroundColor = ConsoleColor.Blue;
