@@ -15,8 +15,8 @@ Console Settings before compile:
     <add key="Secret" value=""/>
     <add key="Passphrase" value=""/>
 	  -->
-    
-	<add key="placebuy" value="no"/> <!-- Place Orders to Buy -->
+	  
+  <add key="placebuy" value="no"/> <!-- Place Orders to Buy -->
   <add key="placesell" value="no"/> <!-- Place Orders to Sell -->
   <add key="tradeBTC" value="no"/> <!-- Trade BTC -->
   <add key="tradeETH" value="no"/> <!-- Trade ETH -->
