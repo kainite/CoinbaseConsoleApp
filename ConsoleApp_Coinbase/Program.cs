@@ -10,7 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Coinbase.Pro;
 using Coinbase.Pro.Models;
-using ConsoleApp_Coinbase;
+
 
 namespace Examples
 {
@@ -49,7 +49,6 @@ namespace Examples
             bool checkBuyETH = true;
             bool checkSellETH = true; //tem que estar false porque sandbox nao tem ETH e tenho que mudar no fim do codigo tb.
             bool errorbuysell = false;
-            bool emailOffSet = false;
             var client = clientSandbox;
 
             if (ConfigurationManager.AppSettings["Enviroment"] == "Sandbox")
@@ -75,11 +74,11 @@ namespace Examples
                 Console.ForegroundColor = ConsoleColor.Cyan;
                 //BTC
                 var ordersBTC = await client.Orders.GetAllOrdersAsync("open", "BTC-EUR");
-                GetOrders(percentageBetOffset, marketPrice, ref checkBuyBTC, ref checkSellBTC, ordersBTC, ref emailOffSet);
+                GetOrders(percentageBetOffset, marketPrice, ref checkBuyBTC, ref checkSellBTC, ordersBTC);
 
                 //ETH
                 var ordersETH = await client.Orders.GetAllOrdersAsync("open", "ETH-EUR");
-                GetOrders(percentageBetOffset, marketPrice, ref checkBuyETH, ref checkSellETH, ordersETH, ref emailOffSet);
+                GetOrders(percentageBetOffset, marketPrice, ref checkBuyETH, ref checkSellETH, ordersETH);
 
                 ////---------      GET ALL Fills
                 Console.ForegroundColor = ConsoleColor.Cyan;
@@ -143,7 +142,7 @@ namespace Examples
                                 string message = "ETH-EUR" + "," + marketPrice + "," + ordertype + "," + size + "," + limitPrice.ToString();
                                 Console.WriteLine(message, Console.ForegroundColor);
                                 file.WriteLine(message);
-                                Email.SendEmail(message, "BUY");
+                                
 
                             }
                         }
@@ -184,7 +183,7 @@ namespace Examples
                                 string message = accountCoin[e] + "-EUR" + "," + marketPrice + "," + ordertype + "," + size + "," + limitPrice.ToString();
                                 Console.WriteLine(message, Console.ForegroundColor);
                                 file.WriteLine(message);
-                                Email.SendEmail(message, "SELL");
+                                
                             }
 
                         }
@@ -259,9 +258,8 @@ namespace Examples
             }
         }
 
-        private static void GetOrders(decimal percentageBetOffset, decimal marketPrice, ref bool checkBuyBTC, ref bool checkSellBTC, PagedResponse<Order> ordersBTC, ref bool emailOffset)
+        private static void GetOrders(decimal percentageBetOffset, decimal marketPrice, ref bool checkBuyBTC, ref bool checkSellBTC, PagedResponse<Order> ordersBTC)
         {
-            if (ordersBTC.Data.Count <= 0) { emailOffset = false; }
             foreach (var order in ordersBTC.Data)
             {
                 Console.WriteLine($"====================================");
@@ -288,17 +286,14 @@ namespace Examples
                 if (percentageOffsetRound < 0) { percentageOffsetRound = percentageOffsetRound * -1; }
 
                 Console.ForegroundColor = ConsoleColor.Magenta;
-                if (percentageOffsetRound <= percentageBetOffset && emailOffset == false)
+                if (percentageOffsetRound <= percentageBetOffset)
                 {
-                    Console.WriteLine(orderProductId + " Price Offset alert LOWER than existing order in : " + percentageOffsetRound + "%", Console.ForegroundColor);
-                    Email.SendEmail(orderProductId + " Price Offset alert LOWER than existing order in : " + percentageOffsetRound + "%", "LOW Price Offset");
-                    emailOffset = true;
+                    Console.WriteLine(orderProductId + " Price Offset alert LOWER than existing order in : " + percentageOffsetRound + "%", Console.ForegroundColor);                   
                 }
-                if (percentageOffsetRound >= percentageBetOffset && emailOffset == false)
+                if (percentageOffsetRound >= percentageBetOffset)
                 {
                     Console.WriteLine(orderProductId + " Price Offset alert HIGHER than existing order in : " + percentageOffsetRound + "%", Console.ForegroundColor);
-                    Email.SendEmail(orderProductId + " Price Offset alert HIGHER than existing order in : " + percentageOffsetRound + "%", "HIGH Price Offset");
-                    emailOffset = true;
+                    
                 }
                 Console.ForegroundColor = ConsoleColor.Cyan;
 
